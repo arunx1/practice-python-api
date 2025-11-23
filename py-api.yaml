@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: python-api
-          image: localhost:32000/py-api:v1
+          image: localhost:32000/py-api:v2
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
@@ -24,6 +24,16 @@ spec:
               value: "redis.infra.svc.cluster.local"
             - name: REDIS_PORT
               value: "6379"
+            - name: POSTGRES_HOST
+              value: "postgres.infra.svc.cluster.local"
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_DB
+              value: "usersdb"
+            - name: POSTGRES_USER
+              value: "usersvc"
+            - name: POSTGRES_PASSWORD
+              value: "usersvcpass"
 ---
 apiVersion: v1
 kind: Service
