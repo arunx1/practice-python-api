@@ -123,21 +123,25 @@ def get_value(key: str):
 def create_user(payload: UserCreate):
     conn = None
     try:
-        conn = get_db_conn()
-        with conn:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute(
-                    """
-                    INSERT INTO users (name, email)
-                    VALUES (%s, %s)
-                    RETURNING id, name, email;
-                    """,
-                    (payload.name, payload.email),
-                )
-                user = cur.fetchone()
-        # Cache the new user
-        cache_user(user)
-        return user
+        try:
+            user = get_user_by_email(payload.email)
+            user["source"] = "exists"
+            return user
+        except HTTPException:
+            conn = get_db_conn()
+            with conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute(
+                        """
+                        INSERT INTO users (name, email)
+                        VALUES (%s, %s)
+                        RETURNING id, name, email;
+                        """,
+                        (payload.name, payload.email),
+                    )
+                    user = cur.fetchone()
+            user["source"] = "new"
+            return user
     except pg_errors.UniqueViolation:
         raise HTTPException(status_code=409, detail="Email already exists")
     except Exception as e:
@@ -191,6 +195,31 @@ def get_user(user_id: int):
         # Cache and return
         cache_user(user)
         user["source"] = "db"
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+
+@app.get("/users/email/{user_email}", response_model=UserOut)
+def get_user_by_email(user_email: EmailStr):
+    conn = None
+    try:
+        conn = get_db_conn()
+        with conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    "SELECT id, name, email FROM users WHERE email = %s;",
+                    (user_email,),
+                )
+                user = cur.fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
         return user
     except HTTPException:
         raise
