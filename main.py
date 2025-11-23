@@ -52,6 +52,7 @@ class UserOut(BaseModel):
     id: int
     name: str
     email: EmailStr
+    source: Optional[str] = None
 
 
 # Helper functions
@@ -170,7 +171,7 @@ def get_user(user_id: int):
     # Try Redis cache first
     cached = get_user_from_cache(user_id)
     if cached:
-        cached["_source"] = "cache"
+        cached["source"] = "cache"
         return cached
 
     # Fallback to DB
@@ -189,7 +190,7 @@ def get_user(user_id: int):
 
         # Cache and return
         cache_user(user)
-        user["_source"] = "db"
+        user["source"] = "db"
         return user
     except HTTPException:
         raise
