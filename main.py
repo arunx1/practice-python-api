@@ -52,7 +52,8 @@ class UserOut(BaseModel):
     id: int
     name: str
     email: EmailStr
-    source: Optional[str] = None
+    source: Optional[str] = 'db'
+    host: str = os.getenv("HOSTNAME", "default")
 
 
 # Helper functions
@@ -100,6 +101,7 @@ def health():
         "status": "ok" if (redis_ok and pg_ok) else "degraded",
         "redis": "up" if redis_ok else "down",
         "postgres": "up" if pg_ok else "down",
+        "host": os.getenv("HOSTNAME", "default"),
     }
 
 
@@ -119,7 +121,7 @@ def get_value(key: str):
 
 # USERS CRUD (DB + Redis cache)
 
-@app.post("/users", response_model=UserOut, status_code=201)
+@app.post("/users", response_model=UserOut)
 def create_user(payload: UserCreate):
     conn = None
     try:
@@ -147,7 +149,7 @@ def create_user(payload: UserCreate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        if 'conn' in locals():
+        if conn and 'conn' in locals():
             conn.close()
 
 
@@ -166,7 +168,7 @@ def list_users():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        if 'conn' in locals():
+        if conn and 'conn' in locals():
             conn.close()
 
 
@@ -201,7 +203,7 @@ def get_user(user_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        if 'conn' in locals():
+        if conn and 'conn' in locals():
             conn.close()
 
 
@@ -226,7 +228,7 @@ def get_user_by_email(user_email: EmailStr):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        if 'conn' in locals():
+        if conn and 'conn' in locals():
             conn.close()
 
 
@@ -270,7 +272,7 @@ def update_user(user_id: int, payload: UserUpdate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        if 'conn' in locals():
+        if conn and 'conn' in locals():
             conn.close()
 
 
@@ -293,6 +295,6 @@ def delete_user(user_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        if 'conn' in locals():
+        if conn and 'conn' in locals():
             conn.close()
 
